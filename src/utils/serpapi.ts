@@ -2,13 +2,13 @@ import type { Flight, SearchParams } from '../types';
 
 const BASE_URL = '/api/serpapi';
 
-// City group codes → primary airport (Serpapi needs real IATA airport codes)
-const CITY_TO_PRIMARY: Record<string, string> = {
-  RIO: 'GIG',
-  SAO: 'GRU',
-  BHZ: 'CNF',
+// City group codes → all airports (for parallel searches)
+const CITY_AIRPORTS: Record<string, string[]> = {
+  RIO: ['GIG', 'SDU'],
+  SAO: ['GRU', 'CGH', 'VCP'],
+  BHZ: ['CNF', 'PLU'],
 };
-const resolveAirport = (code: string) => CITY_TO_PRIMARY[code] ?? code;
+const expandAirports = (code: string): string[] => CITY_AIRPORTS[code] ?? [code];
 
 export interface SerpapiCredentials {
   apiKey: string;
@@ -18,17 +18,52 @@ export async function searchFlightsSerpapi(
   credentials: SerpapiCredentials,
   params: SearchParams
 ): Promise<Flight[]> {
+  const origins = expandAirports(params.origin);
+  const destinations = expandAirports(params.destination);
+
+  // Run all origin×destination combinations in parallel
+  const pairs: [string, string][] = [];
+  for (const o of origins) {
+    for (const d of destinations) {
+      pairs.push([o, d]);
+    }
+  }
+
+  const results = await Promise.all(
+    pairs.map(([dep, arr]) => fetchOnePair(credentials, params, dep, arr))
+  );
+
+  // Merge, deduplicate by id, sort by price
+  const seen = new Set<string>();
+  const merged: Flight[] = [];
+  for (const batch of results) {
+    for (const f of batch) {
+      if (!seen.has(f.id)) {
+        seen.add(f.id);
+        merged.push(f);
+      }
+    }
+  }
+  return merged.sort((a, b) => a.price - b.price);
+}
+
+async function fetchOnePair(
+  credentials: SerpapiCredentials,
+  params: SearchParams,
+  departure_id: string,
+  arrival_id: string
+): Promise<Flight[]> {
   const query = new URLSearchParams({
     engine: 'google_flights',
     api_key: credentials.apiKey,
-    departure_id: resolveAirport(params.origin),
-    arrival_id: resolveAirport(params.destination),
+    departure_id,
+    arrival_id,
     outbound_date: params.departureDate,
     adults: String(params.passengers),
     currency: 'BRL',
     hl: 'pt',
     gl: 'br',
-    type: params.returnDate ? '1' : '2', // 1=round trip, 2=one way
+    type: params.returnDate ? '1' : '2',
   });
 
   if (params.returnDate) {
@@ -36,7 +71,6 @@ export async function searchFlightsSerpapi(
   }
 
   const response = await fetch(`${BASE_URL}?${query.toString()}`);
-
   const data = await response.json().catch(() => ({}));
 
   if (data.error) {
@@ -44,18 +78,12 @@ export async function searchFlightsSerpapi(
     if (msg.toLowerCase().includes('invalid api key') || msg.toLowerCase().includes('api_key')) {
       throw new Error('Chave inválida. Verifique se copiou corretamente do dashboard da Serpapi.');
     }
-    // "no results" is not a real error — just return empty
-    if (
-      msg.toLowerCase().includes('no results') ||
-      data.search_information?.flights_results_state === 'Fully empty'
-    ) {
-      return [];
-    }
-    throw new Error(msg);
+    // No results for this pair — just return empty, other pairs may have results
+    return [];
   }
 
   if (!response.ok) {
-    throw new Error(`Erro na busca: ${response.status}`);
+    return [];
   }
 
   const allFlights = [
@@ -77,11 +105,9 @@ function parseSerpapiFlights(raw: any[], params: SearchParams): Flight[] {
     const stops = offer.flights.length - 1;
     const price = offer.price ?? 0;
 
-    // Convert duration in minutes to ISO 8601-ish string PT#H#M
     const totalMin: number = offer.total_duration ?? firstSeg.duration ?? 0;
     const durationStr = minutesToDuration(totalMin);
 
-    // airline code: try to extract 2-letter IATA from flight_number
     const flightNo: string = firstSeg.flight_number || '';
     const airlineCode = flightNo.slice(0, 2).toUpperCase();
     const airlineName: string = firstSeg.airline || airlineCode;
@@ -100,7 +126,7 @@ function parseSerpapiFlights(raw: any[], params: SearchParams): Flight[] {
       price,
       pricePerPerson: Math.round(price / params.passengers),
       currency: 'BRL',
-      seatsAvailable: 9, // Serpapi doesn't provide seat count
+      seatsAvailable: 9,
     });
   }
 
@@ -110,7 +136,6 @@ function parseSerpapiFlights(raw: any[], params: SearchParams): Flight[] {
 // "2025-03-10 14:30" → full ISO string
 function isoFromGoogleTime(timeStr: string | undefined, dateHint: string): string {
   if (!timeStr) return dateHint + 'T00:00:00';
-  // timeStr format: "2025-03-10 14:30"
   if (timeStr.includes(' ')) {
     return timeStr.replace(' ', 'T') + ':00';
   }
@@ -125,4 +150,3 @@ function minutesToDuration(minutes: number): string {
   if (m === 0) return `PT${h}H`;
   return `PT${h}H${m}M`;
 }
-
