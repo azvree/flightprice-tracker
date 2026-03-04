@@ -1,6 +1,6 @@
 import type { Flight, SearchParams } from '../types';
 
-const BASE_URL = 'https://serpapi.com/search';
+const BASE_URL = '/api/serpapi';
 
 export interface SerpapiCredentials {
   apiKey: string;
