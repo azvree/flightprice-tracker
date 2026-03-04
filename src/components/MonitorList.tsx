@@ -24,14 +24,14 @@ import type { MonitoredRoute } from '../types';
 function RouteCard({ route }: { route: MonitoredRoute }) {
   const { setAlertPrice, toggleAlert, toggleAutoRefresh } = useAppStore();
   const { refreshRoute, removeRoute } = useMonitor();
-  const { countdowns, resetCountdown } = useAutoRefresh();
+  const { countdowns, resetCountdown, intervalSeconds } = useAutoRefresh();
   const [expanded, setExpanded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [alertInput, setAlertInput] = useState(route.alertPrice > 0 ? route.alertPrice.toString() : '');
 
   const variation = calcVariationPct(route.currentPrice, route.lastPrice);
   const alertTriggered = route.alertActive && route.alertPrice > 0 && route.currentPrice <= route.alertPrice;
-  const countdown = countdowns[route.id] ?? 1800;
+  const countdown = countdowns[route.id] ?? intervalSeconds;
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -108,6 +108,11 @@ function RouteCard({ route }: { route: MonitoredRoute }) {
             <p className="text-xs text-white/30 flex items-center gap-1 justify-end">
               <Timer size={10} />
               Próxima atualização
+              {intervalSeconds >= 3600 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 text-[10px] font-semibold ml-1">
+                  2×/dia
+                </span>
+              )}
             </p>
             <p className={`text-sm font-semibold ${route.autoRefreshEnabled ? 'text-indigo-400' : 'text-white/20'}`}>
               {route.autoRefreshEnabled ? formatCountdown(countdown) : 'Desativado'}
