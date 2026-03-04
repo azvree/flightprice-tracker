@@ -58,6 +58,12 @@ export interface AmadeusCredentials {
   tokenExpiry?: number;
 }
 
+export interface SerpapiCredentials {
+  apiKey: string;
+}
+
+export type ApiProvider = 'demo' | 'amadeus' | 'serpapi';
+
 export interface Toast {
   id: string;
   type: 'success' | 'error' | 'warning' | 'info';

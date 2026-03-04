@@ -1,19 +1,24 @@
 import { create } from 'zustand';
-import type { Flight, MonitoredRoute, Toast, AppTab, SearchParams, AmadeusCredentials, SavedRoute } from '../types';
+import type { Flight, MonitoredRoute, Toast, AppTab, SearchParams, AmadeusCredentials, SavedRoute, SerpapiCredentials, ApiProvider } from '../types';
 import {
   loadCredentials,
-  loadDemoMode,
   loadRoutes,
   saveCredentials,
   saveDemoMode,
   saveRoutes,
   saveFavoriteRoutes,
   loadFavoriteRoutes,
+  saveSerpapiCredentials,
+  loadSerpapiCredentials,
+  saveProvider,
+  loadProvider,
 } from '../utils/storage';
 
 interface AppState {
   // Settings
   credentials: AmadeusCredentials | null;
+  serpapiCredentials: SerpapiCredentials | null;
+  activeProvider: ApiProvider;
   isDemoMode: boolean;
 
   // Search
@@ -38,6 +43,8 @@ interface AppState {
 
   // Actions - Settings
   setCredentials: (creds: AmadeusCredentials) => void;
+  setSerpapiCredentials: (creds: SerpapiCredentials) => void;
+  setActiveProvider: (provider: ApiProvider) => void;
   setDemoMode: (demo: boolean) => void;
   setShowSettings: (show: boolean) => void;
 
@@ -73,7 +80,9 @@ const defaultSearchParams: SearchParams = {
 export const useAppStore = create<AppState>((set, _get) => ({
   // Initial state - hydrated from localStorage
   credentials: loadCredentials(),
-  isDemoMode: loadDemoMode(),
+  serpapiCredentials: loadSerpapiCredentials(),
+  activeProvider: loadProvider(),
+  isDemoMode: loadProvider() === 'demo',
   searchParams: defaultSearchParams,
   flights: [],
   isSearching: false,
@@ -90,9 +99,20 @@ export const useAppStore = create<AppState>((set, _get) => ({
     saveCredentials(creds);
     set({ credentials: creds });
   },
+  setSerpapiCredentials: (creds) => {
+    saveSerpapiCredentials(creds);
+    set({ serpapiCredentials: creds });
+  },
+  setActiveProvider: (provider) => {
+    saveProvider(provider);
+    saveDemoMode(provider === 'demo');
+    set({ activeProvider: provider, isDemoMode: provider === 'demo' });
+  },
   setDemoMode: (demo) => {
+    const provider = demo ? 'demo' : 'amadeus';
     saveDemoMode(demo);
-    set({ isDemoMode: demo });
+    saveProvider(provider);
+    set({ isDemoMode: demo, activeProvider: provider });
   },
   setShowSettings: (show) => set({ showSettings: show }),
 

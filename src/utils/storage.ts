@@ -1,7 +1,9 @@
-import type { AmadeusCredentials, MonitoredRoute, PricePoint, SavedRoute } from '../types';
+import type { AmadeusCredentials, MonitoredRoute, PricePoint, SavedRoute, SerpapiCredentials, ApiProvider } from '../types';
 
 const KEYS = {
   credentials: 'fpt_credentials',
+  serpapiCredentials: 'fpt_serpapi_credentials',
+  provider: 'fpt_provider',
   routes: 'fpt_routes',
   demoMode: 'fpt_demo_mode',
   savedRoutes: 'fpt_saved_routes',
@@ -55,6 +57,29 @@ export function loadRoutes(): MonitoredRoute[] {
   } catch {
     return [];
   }
+}
+
+export function saveSerpapiCredentials(creds: SerpapiCredentials): void {
+  localStorage.setItem(KEYS.serpapiCredentials, JSON.stringify(creds));
+}
+
+export function loadSerpapiCredentials(): SerpapiCredentials | null {
+  try {
+    const raw = localStorage.getItem(KEYS.serpapiCredentials);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveProvider(provider: ApiProvider): void {
+  localStorage.setItem(KEYS.provider, provider);
+}
+
+export function loadProvider(): ApiProvider {
+  const raw = localStorage.getItem(KEYS.provider);
+  if (raw === 'amadeus' || raw === 'serpapi') return raw;
+  return 'demo';
 }
 
 export function saveFavoriteRoutes(routes: SavedRoute[]): void {

@@ -1,33 +1,45 @@
 import { useCallback } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { searchFlightsAPI } from '../utils/amadeus';
+import { searchFlightsSerpapi } from '../utils/serpapi';
 import { generateDemoFlights, simulateDelay } from '../utils/demoData';
-import type { SearchParams } from '../types';
+import type { Flight, SearchParams } from '../types';
 
 export function useAmadeusAPI() {
   const {
-    isDemoMode,
+    activeProvider,
     credentials,
+    serpapiCredentials,
     setFlights,
     setSearching,
     addToast,
     setLoadingCalendar,
   } = useAppStore();
 
+  // Central search dispatcher — routes to correct provider
+  const doSearch = useCallback(async (params: SearchParams): Promise<Flight[]> => {
+    if (activeProvider === 'demo') {
+      await simulateDelay();
+      return generateDemoFlights(params);
+    }
+    if (activeProvider === 'serpapi') {
+      if (!serpapiCredentials?.apiKey) {
+        throw new Error('Chave da Serpapi não configurada. Abra as configurações.');
+      }
+      return searchFlightsSerpapi(serpapiCredentials, params);
+    }
+    // amadeus
+    if (!credentials?.clientId || !credentials?.clientSecret) {
+      throw new Error('Credenciais da Amadeus não configuradas. Abra as configurações.');
+    }
+    return searchFlightsAPI(credentials, params);
+  }, [activeProvider, credentials, serpapiCredentials]);
+
   const searchFlights = useCallback(async (params: SearchParams) => {
     setSearching(true);
     setFlights([]);
     try {
-      let flights;
-      if (isDemoMode) {
-        await simulateDelay();
-        flights = generateDemoFlights(params);
-      } else {
-        if (!credentials?.clientId || !credentials?.clientSecret) {
-          throw new Error('Credenciais da Amadeus não configuradas. Abra as configurações.');
-        }
-        flights = await searchFlightsAPI(credentials, params);
-      }
+      const flights = await doSearch(params);
 
       if (flights.length === 0) {
         addToast({ type: 'warning', message: 'Nenhum voo encontrado para essa rota/data.' });
@@ -38,13 +50,12 @@ export function useAmadeusAPI() {
       setFlights(flights);
       return flights;
     } catch (err: any) {
-      const msg = err?.message || 'Erro ao buscar voos. Tente novamente.';
-      addToast({ type: 'error', message: msg });
+      addToast({ type: 'error', message: err?.message || 'Erro ao buscar voos. Tente novamente.' });
       return [];
     } finally {
       setSearching(false);
     }
-  }, [isDemoMode, credentials, setFlights, setSearching, addToast]);
+  }, [doSearch, setFlights, setSearching, addToast]);
 
   const searchCalendarFlights = useCallback(async (params: SearchParams) => {
     setLoadingCalendar(true);
@@ -57,20 +68,12 @@ export function useAmadeusAPI() {
         dates.push(d.toISOString().slice(0, 10));
       }
 
-      const results: Record<string, any[]> = {};
+      const results: Record<string, Flight[]> = {};
 
       await Promise.all(
         dates.map(async (date) => {
           try {
-            let flights;
-            if (isDemoMode) {
-              await new Promise(r => setTimeout(r, Math.random() * 500 + 200));
-              const variation = (Math.random() * 0.4 - 0.2);
-              flights = generateDemoFlights({ ...params, departureDate: date }, variation);
-            } else {
-              if (!credentials?.clientId) throw new Error('No credentials');
-              flights = await searchFlightsAPI(credentials, { ...params, departureDate: date });
-            }
+            const flights = await doSearch({ ...params, departureDate: date });
             results[date] = flights;
           } catch {
             results[date] = [];
@@ -79,12 +82,12 @@ export function useAmadeusAPI() {
       );
 
       useAppStore.getState().setCalendarFlights(results);
-    } catch (err: any) {
+    } catch {
       addToast({ type: 'error', message: 'Erro ao carregar calendário de preços.' });
     } finally {
       setLoadingCalendar(false);
     }
-  }, [isDemoMode, credentials, setLoadingCalendar, addToast]);
+  }, [doSearch, setLoadingCalendar, addToast]);
 
   const fetchRoutePrice = useCallback(async (
     origin: string,
@@ -94,26 +97,14 @@ export function useAmadeusAPI() {
   ): Promise<{ price: number; airline?: string; flightNo?: string } | null> => {
     try {
       const params: SearchParams = { origin, destination, departureDate, passengers };
-      let flights;
-      if (isDemoMode) {
-        await simulateDelay();
-        flights = generateDemoFlights(params);
-      } else {
-        if (!credentials?.clientId) return null;
-        flights = await searchFlightsAPI(credentials, params);
-      }
-
+      const flights = await doSearch(params);
       if (flights.length === 0) return null;
       const cheapest = flights.sort((a, b) => a.price - b.price)[0];
-      return {
-        price: cheapest.price,
-        airline: cheapest.airline,
-        flightNo: cheapest.flightNo,
-      };
+      return { price: cheapest.price, airline: cheapest.airline, flightNo: cheapest.flightNo };
     } catch {
       return null;
     }
-  }, [isDemoMode, credentials]);
+  }, [doSearch]);
 
   return { searchFlights, searchCalendarFlights, fetchRoutePrice };
 }

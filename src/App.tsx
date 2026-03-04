@@ -22,6 +22,7 @@ export default function App() {
     showSettings,
     setShowSettings,
     isDemoMode,
+    activeProvider,
     flights,
     isSearching,
     monitoredRoutes,
@@ -82,7 +83,7 @@ export default function App() {
             ) : (
               <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
                 <Wifi size={11} />
-                API Real
+                {activeProvider === 'serpapi' ? 'Serpapi' : 'Amadeus'}
               </span>
             )}
             <button
