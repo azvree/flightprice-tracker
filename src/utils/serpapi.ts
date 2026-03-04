@@ -28,17 +28,18 @@ export async function searchFlightsSerpapi(
 
   const response = await fetch(`${BASE_URL}?${query.toString()}`);
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(
-      err?.error || `Erro na busca: ${response.status}`
-    );
-  }
-
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
 
   if (data.error) {
-    throw new Error(data.error);
+    const msg: string = data.error;
+    if (msg.toLowerCase().includes('invalid api key') || msg.toLowerCase().includes('api_key')) {
+      throw new Error('Chave inválida. Verifique se copiou corretamente do dashboard da Serpapi.');
+    }
+    throw new Error(msg);
+  }
+
+  if (!response.ok) {
+    throw new Error(`Erro na busca: ${response.status}`);
   }
 
   const allFlights = [
@@ -109,27 +110,3 @@ function minutesToDuration(minutes: number): string {
   return `PT${h}H${m}M`;
 }
 
-// Validates the key using the /account endpoint — free, doesn't consume search credits
-export async function validateSerpapiKey(apiKey: string): Promise<{ searchesLeft: number }> {
-  const response = await fetch(
-    `https://serpapi.com/account.json?api_key=${encodeURIComponent(apiKey)}`
-  );
-
-  const data = await response.json().catch(() => ({}));
-
-  if (data.error) {
-    // Common Serpapi error messages → friendlier Portuguese
-    const msg: string = data.error;
-    if (msg.toLowerCase().includes('invalid api key') || msg.toLowerCase().includes('api_key')) {
-      throw new Error('Chave inválida. Verifique se copiou corretamente do dashboard da Serpapi.');
-    }
-    throw new Error(msg);
-  }
-
-  if (!response.ok) {
-    throw new Error(`Erro de conexão (${response.status}). Tente novamente.`);
-  }
-
-  const searchesLeft: number = data.plan_searches_left ?? data.searches_left ?? 0;
-  return { searchesLeft };
-}

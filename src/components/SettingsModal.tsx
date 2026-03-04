@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { X, Key, Wifi, WifiOff, CheckCircle, Loader2, ExternalLink } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { getAccessToken } from '../utils/amadeus';
-import { validateSerpapiKey } from '../utils/serpapi';
 import type { ApiProvider } from '../types';
 
 type Tab = ApiProvider;
@@ -61,27 +60,15 @@ export function SettingsModal() {
     }
   };
 
-  const handleSaveSerpapi = async () => {
+  const handleSaveSerpapi = () => {
     if (!apiKey.trim()) {
       setError('Informe a API Key da Serpapi.');
       return;
     }
-    setTesting(true);
-    setError('');
-    try {
-      const { searchesLeft } = await validateSerpapiKey(apiKey.trim());
-      setSerpapiCredentials({ apiKey: apiKey.trim() });
-      setActiveProvider('serpapi');
-      addToast({
-        type: 'success',
-        message: `Serpapi conectada! ${searchesLeft} busca${searchesLeft !== 1 ? 's' : ''} restante${searchesLeft !== 1 ? 's' : ''} no mês.`,
-      });
-      setShowSettings(false);
-    } catch (err: any) {
-      setError(err?.message || 'Chave inválida ou erro de conexão.');
-    } finally {
-      setTesting(false);
-    }
+    setSerpapiCredentials({ apiKey: apiKey.trim() });
+    setActiveProvider('serpapi');
+    addToast({ type: 'success', message: 'Chave salva! Será validada na primeira busca.' });
+    setShowSettings(false);
   };
 
   const activeBadge = (provider: ApiProvider) =>
@@ -207,9 +194,9 @@ export function SettingsModal() {
                 className="input-dark w-full font-mono text-xs" />
             </div>
             {error && <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs">{error}</div>}
-            <button onClick={handleSaveSerpapi} disabled={testing}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors disabled:opacity-50">
-              {testing ? <><Loader2 size={15} className="animate-spin" /> Testando...</> : <><CheckCircle size={15} /> Salvar e Validar</>}
+            <button onClick={handleSaveSerpapi}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors">
+              <CheckCircle size={15} /> Salvar Chave
             </button>
           </div>
         )}
