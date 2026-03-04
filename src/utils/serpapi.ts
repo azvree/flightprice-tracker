@@ -2,6 +2,14 @@ import type { Flight, SearchParams } from '../types';
 
 const BASE_URL = '/api/serpapi';
 
+// City group codes → primary airport (Serpapi needs real IATA airport codes)
+const CITY_TO_PRIMARY: Record<string, string> = {
+  RIO: 'GIG',
+  SAO: 'GRU',
+  BHZ: 'CNF',
+};
+const resolveAirport = (code: string) => CITY_TO_PRIMARY[code] ?? code;
+
 export interface SerpapiCredentials {
   apiKey: string;
 }
@@ -13,8 +21,8 @@ export async function searchFlightsSerpapi(
   const query = new URLSearchParams({
     engine: 'google_flights',
     api_key: credentials.apiKey,
-    departure_id: params.origin,
-    arrival_id: params.destination,
+    departure_id: resolveAirport(params.origin),
+    arrival_id: resolveAirport(params.destination),
     outbound_date: params.departureDate,
     adults: String(params.passengers),
     currency: 'BRL',
