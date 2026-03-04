@@ -35,6 +35,13 @@ export async function searchFlightsSerpapi(
     if (msg.toLowerCase().includes('invalid api key') || msg.toLowerCase().includes('api_key')) {
       throw new Error('Chave inválida. Verifique se copiou corretamente do dashboard da Serpapi.');
     }
+    // "no results" is not a real error — just return empty
+    if (
+      msg.toLowerCase().includes('no results') ||
+      data.search_information?.flights_results_state === 'Fully empty'
+    ) {
+      return [];
+    }
     throw new Error(msg);
   }
 
