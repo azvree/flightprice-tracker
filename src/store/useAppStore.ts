@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Flight, MonitoredRoute, Toast, AppTab, SearchParams, AmadeusCredentials } from '../types';
+import type { Flight, MonitoredRoute, Toast, AppTab, SearchParams, AmadeusCredentials, SavedRoute } from '../types';
 import {
   loadCredentials,
   loadDemoMode,
@@ -7,6 +7,8 @@ import {
   saveCredentials,
   saveDemoMode,
   saveRoutes,
+  saveFavoriteRoutes,
+  loadFavoriteRoutes,
 } from '../utils/storage';
 
 interface AppState {
@@ -28,6 +30,11 @@ interface AppState {
 
   // Monitor
   monitoredRoutes: MonitoredRoute[];
+
+  // Saved routes (quick-fill)
+  savedRoutes: SavedRoute[];
+  addSavedRoute: (route: SavedRoute) => void;
+  removeSavedRoute: (id: string) => void;
 
   // Actions - Settings
   setCredentials: (creds: AmadeusCredentials) => void;
@@ -76,6 +83,7 @@ export const useAppStore = create<AppState>((set, _get) => ({
   showSettings: false,
   toasts: [],
   monitoredRoutes: loadRoutes(),
+  savedRoutes: loadFavoriteRoutes(),
 
   // Settings
   setCredentials: (creds) => {
@@ -177,6 +185,22 @@ export const useAppStore = create<AppState>((set, _get) => ({
       );
       saveRoutes(updated);
       return { monitoredRoutes: updated };
+    });
+  },
+
+  addSavedRoute: (route) => {
+    set(state => {
+      if (state.savedRoutes.find(r => r.id === route.id)) return state;
+      const updated = [...state.savedRoutes, route];
+      saveFavoriteRoutes(updated);
+      return { savedRoutes: updated };
+    });
+  },
+  removeSavedRoute: (id) => {
+    set(state => {
+      const updated = state.savedRoutes.filter(r => r.id !== id);
+      saveFavoriteRoutes(updated);
+      return { savedRoutes: updated };
     });
   },
 }));

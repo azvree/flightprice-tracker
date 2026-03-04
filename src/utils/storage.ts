@@ -1,9 +1,10 @@
-import type { AmadeusCredentials, MonitoredRoute, PricePoint } from '../types';
+import type { AmadeusCredentials, MonitoredRoute, PricePoint, SavedRoute } from '../types';
 
 const KEYS = {
   credentials: 'fpt_credentials',
   routes: 'fpt_routes',
   demoMode: 'fpt_demo_mode',
+  savedRoutes: 'fpt_saved_routes',
   history: (id: string) => `fpt_history_${id}`,
 } as const;
 
@@ -51,6 +52,19 @@ export function loadRoutes(): MonitoredRoute[] {
       ...r,
       history: loadHistory(r.id),
     }));
+  } catch {
+    return [];
+  }
+}
+
+export function saveFavoriteRoutes(routes: SavedRoute[]): void {
+  localStorage.setItem(KEYS.savedRoutes, JSON.stringify(routes));
+}
+
+export function loadFavoriteRoutes(): SavedRoute[] {
+  try {
+    const raw = localStorage.getItem(KEYS.savedRoutes);
+    return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }

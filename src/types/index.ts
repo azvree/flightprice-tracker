@@ -66,6 +66,15 @@ export interface Toast {
 
 export type AppTab = 'search' | 'monitor' | 'compare';
 
+export interface SavedRoute {
+  id: string;
+  origin: string;
+  destination: string;
+  label: string;
+  originLabel?: string;
+  destinationLabel?: string;
+}
+
 export interface CalendarDay {
   date: string;
   lowestPrice: number | null;
