@@ -19,6 +19,7 @@ export async function searchFlightsSerpapi(
     adults: String(params.passengers),
     currency: 'BRL',
     hl: 'pt',
+    gl: 'br',
     type: params.returnDate ? '1' : '2', // 1=round trip, 2=one way
   });
 
