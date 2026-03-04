@@ -109,26 +109,27 @@ function minutesToDuration(minutes: number): string {
   return `PT${h}H${m}M`;
 }
 
-export async function validateSerpapiKey(apiKey: string): Promise<void> {
-  // Make a minimal request to validate the key
-  const query = new URLSearchParams({
-    engine: 'google_flights',
-    api_key: apiKey,
-    departure_id: 'GRU',
-    arrival_id: 'GIG',
-    outbound_date: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
-    type: '2',
-    currency: 'BRL',
-    hl: 'pt',
-  });
+// Validates the key using the /account endpoint — free, doesn't consume search credits
+export async function validateSerpapiKey(apiKey: string): Promise<{ searchesLeft: number }> {
+  const response = await fetch(
+    `https://serpapi.com/account.json?api_key=${encodeURIComponent(apiKey)}`
+  );
 
-  const response = await fetch(`${BASE_URL}?${query.toString()}`);
   const data = await response.json().catch(() => ({}));
 
   if (data.error) {
-    throw new Error(data.error);
+    // Common Serpapi error messages → friendlier Portuguese
+    const msg: string = data.error;
+    if (msg.toLowerCase().includes('invalid api key') || msg.toLowerCase().includes('api_key')) {
+      throw new Error('Chave inválida. Verifique se copiou corretamente do dashboard da Serpapi.');
+    }
+    throw new Error(msg);
   }
+
   if (!response.ok) {
-    throw new Error(`Chave inválida ou erro de conexão (${response.status})`);
+    throw new Error(`Erro de conexão (${response.status}). Tente novamente.`);
   }
+
+  const searchesLeft: number = data.plan_searches_left ?? data.searches_left ?? 0;
+  return { searchesLeft };
 }

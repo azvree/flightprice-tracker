@@ -69,10 +69,13 @@ export function SettingsModal() {
     setTesting(true);
     setError('');
     try {
-      await validateSerpapiKey(apiKey.trim());
+      const { searchesLeft } = await validateSerpapiKey(apiKey.trim());
       setSerpapiCredentials({ apiKey: apiKey.trim() });
       setActiveProvider('serpapi');
-      addToast({ type: 'success', message: 'Serpapi (Google Flights) conectada!' });
+      addToast({
+        type: 'success',
+        message: `Serpapi conectada! ${searchesLeft} busca${searchesLeft !== 1 ? 's' : ''} restante${searchesLeft !== 1 ? 's' : ''} no mês.`,
+      });
       setShowSettings(false);
     } catch (err: any) {
       setError(err?.message || 'Chave inválida ou erro de conexão.');
