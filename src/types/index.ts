@@ -79,6 +79,9 @@ export interface SavedRoute {
   label: string;
   originLabel?: string;
   destinationLabel?: string;
+  departureDate?: string;
+  returnDate?: string;
+  passengers?: number;
 }
 
 export interface CalendarDay {

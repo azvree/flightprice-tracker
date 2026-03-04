@@ -69,6 +69,8 @@ export function SearchForm() {
     if (!canSave) return;
     const originCity = originEntry?.city || searchParams.origin;
     const destCity = destEntry?.city || searchParams.destination;
+    // Remove existing (same id) before adding updated version
+    removeSavedRoute(currentRouteId);
     addSavedRoute({
       id: currentRouteId,
       origin: searchParams.origin,
@@ -76,12 +78,21 @@ export function SearchForm() {
       label: `${searchParams.origin} → ${searchParams.destination}`,
       originLabel: originCity,
       destinationLabel: destCity,
+      departureDate: searchParams.departureDate || undefined,
+      returnDate: searchParams.returnDate || undefined,
+      passengers: searchParams.passengers,
     });
     addToast({ type: 'success', message: `Rota ${searchParams.origin} → ${searchParams.destination} salva!` });
   };
 
   const applyRoute = (route: typeof savedRoutes[0]) => {
-    setSearchParams({ origin: route.origin, destination: route.destination });
+    setSearchParams({
+      origin: route.origin,
+      destination: route.destination,
+      ...(route.departureDate && { departureDate: route.departureDate }),
+      ...(route.returnDate && { returnDate: route.returnDate }),
+      ...(route.passengers && { passengers: route.passengers }),
+    });
     setOriginEntry(null);
     setDestEntry(null);
     setErrors({});
@@ -111,9 +122,10 @@ export function SearchForm() {
                 <span className="font-mono font-bold">{route.origin}</span>
                 <ArrowRight size={10} className="opacity-50" />
                 <span className="font-mono font-bold">{route.destination}</span>
-                {(route.originLabel || route.destinationLabel) && (
+                {route.departureDate && (
                   <span className="text-white/30 hidden sm:inline">
-                    · {route.originLabel?.split(' ')[0]}
+                    · {route.departureDate.slice(5).replace('-', '/')}
+                    {route.returnDate && `–${route.returnDate.slice(5).replace('-', '/')}`}
                   </span>
                 )}
                 <button
