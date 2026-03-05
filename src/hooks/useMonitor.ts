@@ -15,7 +15,7 @@ export function useMonitor() {
   const { fetchRoutePrice } = useAmadeusAPI();
 
   const addRoute = useCallback(
-    (flight: Flight, departureDate: string, passengers: number) => {
+    (flight: Flight, departureDate: string, passengers: number, returnDate?: string) => {
       const id = buildRouteId(flight.origin, flight.destination, departureDate);
 
       if (monitoredRoutes.find(r => r.id === id)) {
@@ -56,6 +56,7 @@ export function useMonitor() {
         airlineName: flight.airlineName,
         flightNo: flight.flightNo,
         departureDate,
+        returnDate,
         passengers,
       };
 
@@ -76,7 +77,8 @@ export function useMonitor() {
         route.origin,
         route.destination,
         route.departureDate,
-        route.passengers
+        route.passengers,
+        route.returnDate,
       );
 
       if (!result) {
@@ -119,7 +121,8 @@ export function useMonitor() {
         params.origin,
         params.destination,
         params.departureDate,
-        params.passengers
+        params.passengers,
+        params.returnDate,
       );
 
       if (!result) {
@@ -153,6 +156,7 @@ export function useMonitor() {
         airlineName: result.airline,
         flightNo: result.flightNo,
         departureDate: params.departureDate,
+        returnDate: params.returnDate,
         passengers: params.passengers,
       };
 

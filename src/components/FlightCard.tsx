@@ -27,7 +27,7 @@ export function FlightCard({ flight, isCheapest = false }: FlightCardProps) {
   const isMonitored = monitoredRoutes.some(r => r.id === `${flight.origin}-${flight.destination}-${searchParams.departureDate}`);
 
   const handleMonitor = () => {
-    addRoute(flight, searchParams.departureDate, searchParams.passengers);
+    addRoute(flight, searchParams.departureDate, searchParams.passengers, searchParams.returnDate);
     setActiveTab('monitor');
   };
 

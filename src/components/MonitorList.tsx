@@ -40,7 +40,9 @@ function RouteCard({ route }: { route: MonitoredRoute }) {
     : null;
 
   // Decolar deep-link for this route
-  const decolaUrl = `https://www.decolar.com/shop/flights/results/one-way/${route.origin}/${route.destination}/${route.departureDate}/1/0/0`;
+  const decolaUrl = route.returnDate
+    ? `https://www.decolar.com/shop/flights/results/roundtrip/${route.origin}/${route.destination}/${route.departureDate}/${route.returnDate}/${route.passengers}/0/0`
+    : `https://www.decolar.com/shop/flights/results/one-way/${route.origin}/${route.destination}/${route.departureDate}/${route.passengers}/0/0`;
 
   const handleRefresh = async () => {
     setRefreshing(true);

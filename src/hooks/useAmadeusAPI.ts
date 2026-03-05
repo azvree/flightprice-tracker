@@ -93,10 +93,11 @@ export function useAmadeusAPI() {
     origin: string,
     destination: string,
     departureDate: string,
-    passengers: number
+    passengers: number,
+    returnDate?: string,
   ): Promise<{ price: number; airline?: string; flightNo?: string } | null> => {
     try {
-      const params: SearchParams = { origin, destination, departureDate, passengers };
+      const params: SearchParams = { origin, destination, departureDate, passengers, returnDate };
       const flights = await doSearch(params);
       if (flights.length === 0) return null;
       const cheapest = flights.sort((a, b) => a.price - b.price)[0];

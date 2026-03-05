@@ -40,6 +40,7 @@ export interface MonitoredRoute {
   airlineName?: string;
   flightNo?: string;
   departureDate: string;
+  returnDate?: string;
   passengers: number;
 }
 
