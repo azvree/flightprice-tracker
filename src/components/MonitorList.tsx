@@ -12,12 +12,13 @@ import {
   ChevronUp,
   Clock,
   Timer,
+  ExternalLink,
 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { useMonitor } from '../hooks/useMonitor';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { PriceChart } from './PriceChart';
-import { formatBRL, formatDateTime, calcVariationPct, formatVariation, formatCountdown } from '../utils/formatters';
+import { formatBRL, formatDateTime, formatDate, calcVariationPct, formatVariation, formatCountdown } from '../utils/formatters';
 import { exportJSON, exportCSV } from '../utils/storage';
 import type { MonitoredRoute } from '../types';
 
@@ -32,6 +33,14 @@ function RouteCard({ route }: { route: MonitoredRoute }) {
   const variation = calcVariationPct(route.currentPrice, route.lastPrice);
   const alertTriggered = route.alertActive && route.alertPrice > 0 && route.currentPrice <= route.alertPrice;
   const countdown = countdowns[route.id] ?? intervalSeconds;
+
+  // Find the history point that achieved the minimum price
+  const minPoint = route.history.length > 0
+    ? route.history.reduce((best, p) => p.price < best.price ? p : best, route.history[0])
+    : null;
+
+  // Decolar deep-link for this route
+  const decolaUrl = `https://www.decolar.com/shop/flights/results/one-way/${route.origin}/${route.destination}/${route.departureDate}/1/0/0`;
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -99,6 +108,14 @@ function RouteCard({ route }: { route: MonitoredRoute }) {
           <div>
             <p className="text-xs text-white/30">Mínimo histórico</p>
             <p className="text-sm font-semibold text-emerald-400">{formatBRL(route.minPrice)}</p>
+            {minPoint && (minPoint.airline || minPoint.flightNo) && (
+              <p className="text-[11px] text-white/30 mt-0.5">
+                {[minPoint.airline, minPoint.flightNo].filter(Boolean).join(' · ')}
+              </p>
+            )}
+            {minPoint && (
+              <p className="text-[11px] text-white/20 mt-0.5">{formatDateTime(minPoint.timestamp)}</p>
+            )}
           </div>
           <div>
             <p className="text-xs text-white/30">Máximo histórico</p>
@@ -171,6 +188,16 @@ function RouteCard({ route }: { route: MonitoredRoute }) {
             {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
             {expanded ? 'Ocultar' : 'Ver gráfico'}
           </button>
+          <a
+            href={decolaUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white text-xs font-medium transition-colors"
+            title={`Buscar ${route.origin} → ${route.destination} em ${formatDate(route.departureDate)} no Decolar`}
+          >
+            <ExternalLink size={13} />
+            Comprar
+          </a>
           <button
             onClick={() => removeRoute(route.id)}
             className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium transition-colors"
