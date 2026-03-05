@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Search, ArrowRightLeft, Calendar, Users, CalendarRange, Loader2, Bookmark, BookmarkCheck, X, ArrowRight } from 'lucide-react';
+import { Search, ArrowRightLeft, Calendar, Users, CalendarRange, Loader2, Bookmark, BookmarkCheck, X, ArrowRight, Bell } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { useAmadeusAPI } from '../hooks/useAmadeusAPI';
+import { useMonitor } from '../hooks/useMonitor';
 import { AirportInput } from './AirportInput';
 import type { AirportEntry } from '../data/airports';
 
@@ -11,11 +12,13 @@ export function SearchForm() {
   const {
     searchParams, setSearchParams, isSearching,
     savedRoutes, addSavedRoute, removeSavedRoute,
-    addToast,
+    addToast, setActiveTab,
   } = useAppStore();
   const { searchFlights, searchCalendarFlights } = useAmadeusAPI();
+  const { monitorRoute } = useMonitor();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [compareMode, setCompareMode] = useState(false);
+  const [monitoring, setMonitoring] = useState(false);
 
   // Track display labels for origin/destination
   const [originEntry, setOriginEntry] = useState<AirportEntry | null>(null);
@@ -25,6 +28,7 @@ export function SearchForm() {
   const isAlreadySaved = savedRoutes.some(r => r.id === currentRouteId);
   const canSave = searchParams.origin.length >= 3 && searchParams.destination.length >= 3
     && searchParams.origin !== searchParams.destination;
+  const canMonitor = canSave && !!searchParams.departureDate;
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
@@ -83,6 +87,20 @@ export function SearchForm() {
       passengers: searchParams.passengers,
     });
     addToast({ type: 'success', message: `Rota ${searchParams.origin} → ${searchParams.destination} salva!` });
+  };
+
+  const handleMonitor = async () => {
+    if (!canMonitor) return;
+    setMonitoring(true);
+    const ok = await monitorRoute({
+      origin: searchParams.origin.toUpperCase(),
+      destination: searchParams.destination.toUpperCase(),
+      departureDate: searchParams.departureDate,
+      returnDate: searchParams.returnDate,
+      passengers: searchParams.passengers,
+    });
+    setMonitoring(false);
+    if (ok) setActiveTab('monitor');
   };
 
   const applyRoute = (route: typeof savedRoutes[0]) => {
@@ -284,6 +302,17 @@ export function SearchForm() {
             )}
           </div>
 
+          {canMonitor && (
+            <button
+              onClick={handleMonitor}
+              disabled={monitoring || isSearching}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/30 text-emerald-400 font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Buscar o menor preço agora e monitorar automaticamente"
+            >
+              {monitoring ? <Loader2 size={15} className="animate-spin" /> : <Bell size={15} />}
+              {monitoring ? 'Buscando...' : 'Monitorar rota'}
+            </button>
+          )}
           <button
             onClick={handleSearch}
             disabled={isSearching}

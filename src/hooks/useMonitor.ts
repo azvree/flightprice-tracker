@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { useAmadeusAPI } from './useAmadeusAPI';
-import type { Flight, MonitoredRoute } from '../types';
+import type { Flight, MonitoredRoute, SearchParams } from '../types';
 import { generateDemoHistory } from '../utils/demoData';
 import { saveHistory } from '../utils/storage';
 
@@ -106,6 +106,64 @@ export function useMonitor() {
     [monitoredRoutes, fetchRoutePrice, updateRoutePrice, addToast]
   );
 
+  const monitorRoute = useCallback(
+    async (params: SearchParams): Promise<boolean> => {
+      const id = buildRouteId(params.origin, params.destination, params.departureDate);
+
+      if (monitoredRoutes.find(r => r.id === id)) {
+        addToast({ type: 'warning', message: 'Essa rota já está sendo monitorada.' });
+        return false;
+      }
+
+      const result = await fetchRoutePrice(
+        params.origin,
+        params.destination,
+        params.departureDate,
+        params.passengers
+      );
+
+      if (!result) {
+        addToast({ type: 'error', message: 'Nenhum voo encontrado para monitorar nessa rota/data.' });
+        return false;
+      }
+
+      let history: MonitoredRoute['history'] = [];
+      if (isDemoMode) {
+        history = generateDemoHistory(params.origin, params.destination, Math.round(result.price * 0.9), 10);
+      }
+
+      const route: MonitoredRoute = {
+        id,
+        origin: params.origin,
+        destination: params.destination,
+        label: `${params.origin} → ${params.destination}`,
+        alertPrice: 0,
+        alertActive: false,
+        currentPrice: result.price,
+        minPrice: Math.min(result.price, ...history.map(h => h.price)),
+        maxPrice: Math.max(result.price, ...history.map(h => h.price)),
+        lastPrice: result.price,
+        history: [
+          ...history,
+          { timestamp: new Date().toISOString(), price: result.price, airline: result.airline, flightNo: result.flightNo },
+        ],
+        lastUpdated: new Date().toISOString(),
+        autoRefreshEnabled: true,
+        airline: result.airline,
+        airlineName: result.airline,
+        flightNo: result.flightNo,
+        departureDate: params.departureDate,
+        passengers: params.passengers,
+      };
+
+      saveHistory(id, route.history);
+      addMonitoredRoute(route);
+      addToast({ type: 'success', message: `Monitorando ${route.label} — menor preço: ${result.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` });
+      return true;
+    },
+    [monitoredRoutes, fetchRoutePrice, addMonitoredRoute, addToast, isDemoMode]
+  );
+
   const removeRoute = useCallback(
     (routeId: string) => {
       removeMonitoredRoute(routeId);
@@ -114,5 +172,5 @@ export function useMonitor() {
     [removeMonitoredRoute, addToast]
   );
 
-  return { addRoute, refreshRoute, removeRoute };
+  return { addRoute, refreshRoute, removeRoute, monitorRoute };
 }
